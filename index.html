@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+        <title>Babylon.js sample code</title>
+
+        <!-- Babylon.js -->
+        <script src="https://code.jquery.com/pep/0.4.2/pep.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+        <script src="https://preview.babylonjs.com/ammo.js"></script>
+        <script src="https://preview.babylonjs.com/cannon.js"></script>
+        <script src="https://preview.babylonjs.com/Oimo.js"></script>
+        <script src="https://preview.babylonjs.com/gltf_validator.js"></script>
+        <script src="https://preview.babylonjs.com/earcut.min.js"></script>
+        <script src="https://preview.babylonjs.com/babylon.js"></script>
+        <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+        <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+        <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+        <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+        <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+        <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+        <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+        </style>
+    </head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+        var canvas = document.getElementById("renderCanvas");
+
+        // You have to create a function called createScene. This function must return a BABYLON.Scene object
+        // You can reference the following variables: scene, canvas
+        // You must at least define a camera
+
+        var createScene = function() {
+          var scene = new BABYLON.Scene(engine);
+
+          // camera
+          var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 1.5, Math.PI / 2.5, 25, new BABYLON.Vector3(2.5, -1.5, 7.5), scene);
+          camera.attachControl(canvas, true);
+
+          //var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-2, -3, 1), scene);
+        	//light.position = new BABYLON.Vector3(10, 50, -10);
+
+          //var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-6, -3, 5), scene);
+          //light.position = new BABYLON.Vector3(12, 6, -10);
+
+          var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(6, -3, 5), scene);
+          //light.position = new BABYLON.Vector3(-12, 6, -10);
+          //light.shadowMinZ = 1;
+          //light.shadowMaxZ = 20;
+
+          light.position = new BABYLON.Vector3(-120, 60, -100);
+          light.shadowMinZ = 150;
+          light.shadowMaxZ = 200;
+
+          //light.intensity = 10;
+          light.intensity = 3;
+
+          //shadows
+          var shadowGenerator = new BABYLON.ShadowGenerator(4096, light);
+          //shadowGenerator.useExponentialShadowMap = true;
+          //shadowGenerator.forceBackFacesOnly = true;
+
+        	var wallmat = new BABYLON.StandardMaterial("wallmaterial", scene);
+          wallmat.diffuseTexture = new BABYLON.Texture("http://i.imgur.com/2b1C7UH.jpg", scene);
+
+        	var innerwallmat = new BABYLON.StandardMaterial("innerwallmaterial", scene);
+          innerwallmat.diffuseColor = new BABYLON.Color3(240/255, 223/255, 203/255);
+
+        	//Polygon shape in XoZ plane
+        	var frontWallData = [
+        				new BABYLON.Vector3(-5.5, 0, -3),
+                        new BABYLON.Vector3(5.5, 0, -3),
+                        new BABYLON.Vector3(5.5, 0, 3),
+                        new BABYLON.Vector3(-5.5, 0, 3)
+                      ];
+
+        	//Holes in XoZ plane
+        	var frontWindowHoles = [];
+        		frontWindowHoles[0] = [
+        				new BABYLON.Vector3(-4.78, 0, -2.3),
+                        new BABYLON.Vector3(-1.58, 0, -2.3),
+                        new BABYLON.Vector3(-1.58, 0, -0.3),
+                        new BABYLON.Vector3(-4.78, 0, -0.3)
+                       ];
+        		frontWindowHoles[1] = [
+                        new BABYLON.Vector3(1.58, 0, -2.3),
+        				new BABYLON.Vector3(4.78, 0, -2.3),
+        				new BABYLON.Vector3(4.78, 0, -0.3),
+                        new BABYLON.Vector3(1.58, 0, -0.3)
+                       ];
+               frontWindowHoles[2] = [
+        				new BABYLON.Vector3(-4.03, 0, 0.75),
+                        new BABYLON.Vector3(-2.13, 0, 0.75),
+                        new BABYLON.Vector3(-2.13, 0, 2.55),
+                        new BABYLON.Vector3(-4.03, 0, 2.55)
+                       ];
+        		frontWindowHoles[3] = [
+        				new BABYLON.Vector3(-0.65, 0, 0.75),
+                        new BABYLON.Vector3(0.65, 0, 0.75),
+                        new BABYLON.Vector3(0.65, 0, 2.55),
+                        new BABYLON.Vector3(-0.65, 0, 2.55)
+                       ];
+               frontWindowHoles[4] = [
+        				new BABYLON.Vector3(2.13, 0, 0.75),
+                        new BABYLON.Vector3(4.03, 0, 0.75),
+                        new BABYLON.Vector3(4.03, 0, 2.55),
+                        new BABYLON.Vector3(2.13, 0, 2.55)
+                       ];
+
+
+        	var faceUV = new Array(3);
+
+        	faceUV[0] = new BABYLON.Vector4(0, 0, 7/15, 1);
+        	faceUV[1] = new BABYLON.Vector4(14/15, 0, 1, 1);
+        	faceUV[2] = new BABYLON.Vector4(7/15, 0, 14/15, 1);
+
+        	var frontWall = BABYLON.MeshBuilder.ExtrudePolygon("wall", {shape:frontWallData, depth: 0.15, holes:frontWindowHoles, faceUV: faceUV}, scene);
+        	frontWall.rotation.x = -Math.PI/2;
+
+        	frontWall.material = wallmat;
+          frontWall.receiveShadows = true;
+
+        	var windowMaker = function(width, height, frames, frameDepth, frameThickness, windowName = "window") {
+
+        		var windowShape = [
+        			new BABYLON.Vector3(0, 0, 0),
+        			new BABYLON.Vector3(width, 0, 0),
+        			new BABYLON.Vector3(width, 0, height),
+        			new BABYLON.Vector3(0, 0, height)
+        		];
+
+            // horizontal frames
+        		var glassWidth = (width - (frames + 1) * frameThickness)/frames;
+        		var glassHeight = height - 2 * frameThickness;
+        		var glass = [];
+        		var acf = frameThickness;
+        		for(var f = 0; f < frames; f++) {
+        			glass[f] = [];
+        			glass[f].push(new BABYLON.Vector3(acf, 0, frameThickness + glassHeight));
+        			glass[f].push(new BABYLON.Vector3(acf + glassWidth, 0, frameThickness + glassHeight));
+        			glass[f].push(new BABYLON.Vector3(acf + glassWidth, 0, frameThickness));
+        			glass[f].push(new BABYLON.Vector3(acf, 0, frameThickness));
+        			acf += frameThickness + glassWidth;
+        		}
+
+            /*
+        		var windowShape = [
+        			new BABYLON.Vector3(0, 0, 0),
+        			new BABYLON.Vector3(width, 0, 0),
+        			new BABYLON.Vector3(width, height, 0),
+        			new BABYLON.Vector3(0, height, 0)
+        		];
+
+            // horizontal frames
+        		var glassWidth = (width - (frames + 1) * frameThickness)/frames;
+        		var glassHeight = height - 2 * frameThickness;
+        		var glass = [];
+        		var acf = frameThickness;
+        		for(var f = 0; f < frames; f++) {
+        			glass[f] = [];
+        			glass[f].push(new BABYLON.Vector3(acf, frameThickness + glassHeight, 0));
+        			glass[f].push(new BABYLON.Vector3(acf + glassWidth, frameThickness + glassHeight, 0));
+        			glass[f].push(new BABYLON.Vector3(acf + glassWidth, frameThickness, 0));
+        			glass[f].push(new BABYLON.Vector3(acf, frameThickness, 0));
+        			acf += frameThickness + glassWidth;
+        		}
+            */
+
+        		var window = BABYLON.MeshBuilder.ExtrudePolygon(windowName, {shape:windowShape, holes:glass, depth:frameDepth}, scene);
+        		window.rotation.x = -Math.PI/2;
+            window.receiveShadows = true;
+
+        		return window;
+        	}
+
+        	var windowFBL = windowMaker(3.2, 2, 2, 0.15, 0.1, "windowFBL");
+        	windowFBL.position.x = -4.78;
+        	windowFBL.position.y = -2.3;
+        	windowFBL.position.z = 0.1;
+
+        	var windowFBR = windowMaker(3.2, 2, 2, 0.15, 0.1, "windowFBR");
+        	windowFBR.position.x = 1.58;
+        	windowFBR.position.y = -2.3;
+        	windowFBR.position.z = 0.1;
+
+        	//var windowFTL = windowMaker(1.9, 1.8, 2, 0.15, 0.1);
+          var windowFTL = windowMaker(1.9, 1.8, 0, 0.15, 0.1, "windowFTL");
+        	windowFTL.position.x = -4.03;
+        	windowFTL.position.y = 0.75;
+        	windowFTL.position.z = 0.1;
+
+        	var windowFTR = windowMaker(1.9, 1.8, 2, 0.15, 0.1, "windowFTR");
+        	windowFTR.position.x = 2.13;
+        	windowFTR.position.y = 0.75;
+        	windowFTR.position.z = 0.1;
+
+        	var windowFTM = windowMaker(1.3, 1.8, 2, 0.15, 0.1, "windowFTM");
+        	windowFTM.position.x = -0.65;
+        	windowFTM.position.y = 0.75;
+        	windowFTM.position.z = 0.1;
+
+        	var louvreSetMaker = function(window, louvreWidth, louvreDepth, louvreSpacing, louvreAngle, louvreDepthBuffer) {
+            var windowHeight = window.geometry.extend.maximum.z - window.geometry.extend.minimum.z
+            var windowWidth = window.geometry.extend.maximum.x - window.geometry.extend.minimum.x
+            console.log("window name: " + window.name + ", window width: " + windowWidth + ", window height: " + windowHeight);
+
+            var windowOffset = 0.25;
+            var louvreHeight = windowHeight + (windowOffset * 2);
+            var louvreCount = Math.ceil((windowWidth + (windowOffset * 2))/louvreSpacing) + 1;
+            var louvreSetWidth = (louvreCount - 1) * louvreSpacing;
+            var windowWidthOffset = (louvreSetWidth - windowWidth) / 2;
+
+            console.log("louvre height: " + louvreHeight + ", louvre set width: " + louvreSetWidth + ", window width offset: " + windowWidthOffset + ", louvre count: " + louvreCount + ", louvre spacing: " + louvreSpacing);
+
+        		var louvreShape = [
+        			new BABYLON.Vector3(0, 0, 0),
+        			new BABYLON.Vector3(louvreWidth, 0, 0),
+        			new BABYLON.Vector3(louvreWidth, 0, louvreHeight),
+        			new BABYLON.Vector3(0, 0, louvreHeight)
+        		];
+
+            louvreSet = new Array(louvreCount);
+            for (var i = 0; i < louvreCount; i++) {
+        		  var louvre = BABYLON.MeshBuilder.ExtrudePolygon(window.name + "_louvre", {shape:louvreShape, depth: louvreDepth}, scene);
+        		  louvre.rotation.x = -Math.PI/2;
+        		  louvre.rotation.y = Math.PI/2;
+
+              louvre.position.y = window.position.y - windowOffset;
+              louvre.position.x = window.position.x - windowWidthOffset + (i * louvreSpacing);
+              louvre.position.z = window.position.z - louvreDepthBuffer;
+
+              louvreSet[i] = louvre
+            }
+
+            return BABYLON.Mesh.MergeMeshes(louvreSet, true);
+          }
+
+          var louvreSetFTL = louvreSetMaker(windowFTL, 0.25, 0.075, 0.5, 0, 0.5);
+        	shadowGenerator.addShadowCaster(louvreSetFTL);
+
+          //var louvreSetFTR = louvreSetMaker(windowFTR, 0.25, 0.075, 0.5, 0);
+        	//shadowGenerator.addShadowCaster(louvreSetFTR);
+
+          var louvreSetFBL = louvreSetMaker(windowFBL, 0.25, 0.075, 0.5, 0, 0.5);
+          //louvreSetFBL.receiveShadows = true;
+        	shadowGenerator.addShadowCaster(louvreSetFBL);
+
+          /*
+          var louvreSetFBL2 = louvreSetMaker(windowFBL, 0.25, 0.075, 0.5, 0, 2);
+        	shadowGenerator.addShadowCaster(louvreSetFBL2);
+
+          var box = BABYLON.MeshBuilder.CreateBox("box", {height: 2, width: 2, depth: 4, updatable: true, sideOrientation: BABYLON.Mesh.DOUBLESIDE});
+          box.position = new BABYLON.Vector3(-10, 0, 2);
+          //box.rotation.x = -Math.PI/2;
+          box.receiveShadows = true;
+
+          var louvreSetBox = louvreSetMaker(box, 0.25, 0.075, 0.5, 0, 4);
+        	shadowGenerator.addShadowCaster(louvreSetBox);
+          //Hide louvreset by setting layermask. Note shadows still cast in default layer, e.g. 0x0FFFFFFF
+          louvreSetBox.layerMask = 0x10000000;
+          */
+
+          //Q: Can we access shadowmap texture after rendering to determine how much shadow mesh receives?
+          //A: Yes, we can! Steps to determine how much shadow/light mesh receives
+          //  1. Get the shadowmap and transform matrix of projection (frustrum) from light's perspective
+          //  2. Place camera in elevation view of window mesh at depth where each texel (pixel) in texturemap represents approx 1cm^2
+          //  3. For each texel of window mesh in camera texturemap calculate depth from light using light frustrum
+          //     and compare to lightmap. If depth of texel is greater than depth of lightmap then texel is in shade
+          //  4. Optionally use layermasks to include only window mesh in camera texturemap.
+          //
+          //Q: So where is the sun exactly and how much energy does it radiate?
+          //A: Glad you asked. Using a combination of Solar Altitude (Alt) and Solar Azimuth (Az) angles
+          //   at a known time the sun can be located in the horizontal coordinate system which
+          //   translates to X, Y and Z as follows:
+          //
+          //   X = sin(Az)
+          //   Y = sin(Alt)
+          //   Z = √(1 - sin(Az)²)
+          //
+          //References:
+          //
+          //Solar Insolation/Solar Irradiance
+          //https://sciencing.com/calculate-solar-insolation-8435082.html
+          //https://en.wikipedia.org/wiki/Solar_irradiance
+          //
+          //Solar Position
+          //https://www.itacanet.org/the-sun-as-a-source-of-energy/part-1-solar-astronomy/
+          //https://www.itacanet.org/the-sun-as-a-source-of-energy/part-3-calculating-solar-angles/
+          //https://en.wikipedia.org/wiki/Position_of_the_Sun
+          //https://en.wikipedia.org/wiki/Horizontal_coordinate_system
+          //https://en.wikipedia.org/wiki/Solar_zenith_angle
+          //https://en.wikipedia.org/wiki/Solar_azimuth_angle
+
+          var windowShadowMapRender = false;
+          shadowGenerator.onAfterShadowMapRenderMeshObservable = new BABYLON.Observable();
+          shadowGenerator.onAfterShadowMapRenderMeshObservable.addOnce(function(item){
+              console.log("rendered shadowmap for " + item.name)
+              if(!windowShadowMapRender && item.name == louvreSetFTL.name){
+                  console.log(item)
+                  windowShadowMapRender=true;
+              }
+          });
+
+
+        	//GUI
+        	var myGUI = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+          var panel = new BABYLON.GUI.StackPanel();
+          panel.width = "210px";
+        	panel.isVertical = true;
+          panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+          panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+          myGUI.addControl(panel);
+
+        	var panelHeading = new BABYLON.GUI.StackPanel();
+        	panelHeading.width = "150px";
+        	panelHeading.height = "45px";
+        	panelHeading.isVertical = false;
+          panelHeading.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+          panelHeading.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+          panel.addControl(panelHeading);
+
+        	var heading = new BABYLON.GUI.TextBlock();
+          heading.text = "Toggle Visibility";
+          heading.width = "180px";
+        	heading.height = "40px"
+          heading.paddingLeft = "10px";
+        	heading.paddingBottom = "15px";
+          heading.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+          heading.color = "white";
+          panelHeading.addControl(heading);
+
+        	var panelFront = new BABYLON.GUI.StackPanel();
+        	panelFront.width = "150px";
+        	panelFront.height = "25px";
+        	panelFront.isVertical = false;
+          panelFront.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+          panelFront.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+          panel.addControl(panelFront);
+
+        	var checkboxFront = new BABYLON.GUI.Checkbox();
+          checkboxFront.width = "20px";
+          checkboxFront.height = "20px";
+          checkboxFront.isChecked = true;
+          checkboxFront.color = "green";
+          checkboxFront.onIsCheckedChangedObservable.add(function(value) {
+            if (value) {
+              checkboxFront.color = "green";
+              frontWall.isVisible = true;
+              windowFBL.isVisible = true;
+        		  windowFBR.isVisible = true;
+        		  windowFTL.isVisible = true;
+        		  windowFTR.isVisible = true;
+        		  windowFTM.isVisible = true;
+            }
+        	  else {
+              checkboxFront.color = "red";
+        		  frontWall.isVisible = false;
+        		  windowFBL.isVisible = false;
+        		  windowFBR.isVisible = false;
+        		  windowFTL.isVisible = false;
+        		  windowFTR.isVisible = false;
+        		  windowFTM.isVisible = false;
+        	  }
+          });
+          panelFront.addControl(checkboxFront);
+
+          var textFront = new BABYLON.GUI.TextBlock();
+          textFront.text = "Front";
+          textFront.width = "180px";
+          textFront.paddingLeft = "10px";
+          textFront.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+          textFront.color = "white";
+          panelFront.addControl(textFront);
+
+          var panelHeading2 = new BABYLON.GUI.StackPanel();
+        	panelHeading2.width = "150px";
+        	panelHeading2.height = "100px";
+          panelHeading2.paddingTop = "50px";
+        	panelHeading2.isVertical = false;
+          panelHeading2.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+          panelHeading2.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+          panel.addControl(panelHeading2);
+
+        	var heading2 = new BABYLON.GUI.TextBlock();
+          heading2.text = "Shadow Map";
+          heading2.width = "180px";
+        	heading2.height = "40px"
+          heading2.paddingLeft = "10px";
+        	heading2.paddingBottom = "15px";
+          heading2.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+          heading2.color = "white";
+          panelHeading2.addControl(heading2);
+
+          var panelShadowMap = new BABYLON.GUI.StackPanel();
+        	panelShadowMap.width = "150px";
+        	panelShadowMap.height = "200px";
+        	//panelShadowMap.isVertical = false;
+          panelShadowMap.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+          panelShadowMap.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+          panel.addControl(panelShadowMap);
+
+          var buttonShadowMap = BABYLON.GUI.Button.CreateSimpleButton("buttonShadowMap", "Download Shadow Map");
+          buttonShadowMap.textBlock.color = "white";
+          buttonShadowMap.width = "150px";
+          buttonShadowMap.height = "40px";
+          buttonShadowMap.marginTop = "20px";
+          buttonShadowMap.onPointerClickObservable.add(function(value) {
+
+            console.log("buttonShadowMap Click");
+            var shadowMapTexture = shadowGenerator.getShadowMap();
+            console.log("ShadowMapTexture object");
+            console.log(shadowMapTexture);
+
+            var jsonShadowMapTexture = shadowMapTexture.serialize();
+            console.log("ShadowMapTexture json");
+            console.log(jsonShadowMapTexture);
+
+            /*
+            var imageUrl = shadowMapTexture.getContext().canvas.toDataURL("image/png");
+
+            //Creating a link if the browser have the download attribute on the a tag, to automatically start download generated image.
+            if ( "download" in document.createElement("a") ) {
+              var a = window.document.createElement("a");
+              a.href = imageUrl;
+              a.setAttribute("download", shadowMapTexture.name + ".png");
+
+              window.document.body.appendChild(a);
+
+              a.addEventListener("click", function() {
+                a.parentElement.removeChild(a);
+              });
+              a.click();
+
+            //Or opening a new tab with the image if it is not possible to automatically start download.
+            } else {
+              var newWindow = window.open("");
+              var img = newWindow.document.createElement("img");
+              img.src = imageurl;
+              newWindow.document.body.appendChild(img);
+            }
+            */
+
+          });
+          panelShadowMap.addControl(buttonShadowMap);
+
+          var buttonDepthMap = BABYLON.GUI.Button.CreateSimpleButton("buttonDepthMap", "Download Depth Map");
+          buttonDepthMap.textBlock.color = "white";
+          buttonDepthMap.width = "150px";
+          buttonDepthMap.height = "40px";
+          buttonDepthMap.marginTop = "20px";
+          buttonDepthMap.onPointerClickObservable.add(function(evt) {
+
+          });
+          panelShadowMap.addControl(buttonDepthMap);
+
+          return scene;
+
+        }
+
+        var engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+        var scene = createScene();
+
+        scene.debugLayer.show();
+
+        engine.runRenderLoop(function () {
+            if (scene) {
+                scene.render();
+            }
+        });
+
+        // Resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script>
+</body>
+</html>
