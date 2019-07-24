@@ -50,8 +50,53 @@
         var createScene = function() {
           var scene = new BABYLON.Scene(engine);
 
+          //Q: Can we access shadowmap texture after rendering to determine how much shadow mesh receives?
+          //A: Yes, we can! Steps to determine how much shadow/light mesh receives
+          //  1. Get the shadowmap and transform matrix of projection (frustrum) from light's perspective
+          //  2. Place camera in elevation view of window mesh at depth where each texel (pixel) in texturemap represents approx 1cm^2
+          //  3. For each texel of window mesh in camera texturemap calculate depth from light using light frustrum
+          //     and compare to lightmap. If depth of texel is greater than depth of lightmap then texel is in shade
+          //  4. Optionally use layermasks to include only window mesh in camera texturemap.
+          //
+          //Q: So where is the sun exactly and how much energy does it radiate?
+          //A: Glad you asked. At a known date and time and latitude the Altitude (Alt), Solar Azimuth (Az)
+          //   of the sun in the horizontal coordinate system can be derived from the Latitude (L), Declination Angle (D)
+          //   and Hour Angle (H). This can then be transformed in to to X, Y and Z as follows:
+          //
+          //   L        = latitude
+          //   D        = 23.45 * sin((284 + julian day of year)/36.25)
+          //   H        = 15 * (time in hours - 12)
+          //
+          //   sin(Az)  = - (sin(H)cos(D)) / √(1 - sin(Alt)²)
+          //   sin(Alt) = sin(L)sin(D) + cos(L)cos(D)cos(H)
+          //
+          //   X        = sin(Az)
+          //   Y        = sin(Alt)
+          //   Z        = √(1 - sin(Az)²) * -D/|D|
+          //
+          //References:
+          //
+          //Solar Insolation/Solar Irradiance
+          //https://sciencing.com/calculate-solar-insolation-8435082.html
+          //https://en.wikipedia.org/wiki/Solar_irradiance
+          //
+          //Solar Position
+          //https://www.itacanet.org/the-sun-as-a-source-of-energy/part-1-solar-astronomy/
+          //https://www.itacanet.org/the-sun-as-a-source-of-energy/part-3-calculating-solar-angles/
+          //https://en.wikipedia.org/wiki/Position_of_the_Sun
+          //https://en.wikipedia.org/wiki/Horizontal_coordinate_system
+          //https://en.wikipedia.org/wiki/Solar_zenith_angle
+          //https://en.wikipedia.org/wiki/Solar_azimuth_angle
+
+
+          //Orientation of wall in degrees from true north
+          var wallOrientation = 300;
+
+          var root = new BABYLON.TransformNode();
+
           // camera
-          var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 1.5, Math.PI / 2.5, 25, new BABYLON.Vector3(2.5, -1.5, 7.5), scene);
+          //var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 1.5, Math.PI / 2.5, 25, new BABYLON.Vector3(2.5, -1.5, 7.5), scene);
+          var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI*1.3, Math.PI*0.4, 25, new BABYLON.Vector3(0, 0, 0), scene);
           camera.attachControl(canvas, true);
 
           //var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-2, -3, 1), scene);
@@ -132,7 +177,8 @@
         	faceUV[2] = new BABYLON.Vector4(7/15, 0, 14/15, 1);
 
         	var frontWall = BABYLON.MeshBuilder.ExtrudePolygon("wall", {shape:frontWallData, depth: 0.15, holes:frontWindowHoles, faceUV: faceUV}, scene);
-        	frontWall.rotation.x = -Math.PI/2;
+          frontWall.parent = root;
+          frontWall.rotation.x = -Math.PI/2;
 
         	frontWall.material = wallmat;
           frontWall.receiveShadows = true;
@@ -184,7 +230,8 @@
             */
 
         		var window = BABYLON.MeshBuilder.ExtrudePolygon(windowName, {shape:windowShape, holes:glass, depth:frameDepth}, scene);
-        		window.rotation.x = -Math.PI/2;
+            window.parent = root;
+            window.rotation.x = -Math.PI/2;
             window.receiveShadows = true;
 
         		return window;
@@ -249,7 +296,10 @@
               louvreSet[i] = louvre
             }
 
-            return BABYLON.Mesh.MergeMeshes(louvreSet, true);
+            var louvreSetMesh = BABYLON.Mesh.MergeMeshes(louvreSet, true);
+            louvreSetMesh.parent = root;
+
+            return louvreSetMesh;
           }
 
           var louvreSetFTL = louvreSetMaker(windowFTL, 0.25, 0.075, 0.5, 0, 0.5);
@@ -277,36 +327,8 @@
           louvreSetBox.layerMask = 0x10000000;
           */
 
-          //Q: Can we access shadowmap texture after rendering to determine how much shadow mesh receives?
-          //A: Yes, we can! Steps to determine how much shadow/light mesh receives
-          //  1. Get the shadowmap and transform matrix of projection (frustrum) from light's perspective
-          //  2. Place camera in elevation view of window mesh at depth where each texel (pixel) in texturemap represents approx 1cm^2
-          //  3. For each texel of window mesh in camera texturemap calculate depth from light using light frustrum
-          //     and compare to lightmap. If depth of texel is greater than depth of lightmap then texel is in shade
-          //  4. Optionally use layermasks to include only window mesh in camera texturemap.
-          //
-          //Q: So where is the sun exactly and how much energy does it radiate?
-          //A: Glad you asked. Using a combination of Solar Altitude (Alt) and Solar Azimuth (Az) angles
-          //   at a known time the sun can be located in the horizontal coordinate system which
-          //   translates to X, Y and Z as follows:
-          //
-          //   X = sin(Az)
-          //   Y = sin(Alt)
-          //   Z = √(1 - sin(Az)²)
-          //
-          //References:
-          //
-          //Solar Insolation/Solar Irradiance
-          //https://sciencing.com/calculate-solar-insolation-8435082.html
-          //https://en.wikipedia.org/wiki/Solar_irradiance
-          //
-          //Solar Position
-          //https://www.itacanet.org/the-sun-as-a-source-of-energy/part-1-solar-astronomy/
-          //https://www.itacanet.org/the-sun-as-a-source-of-energy/part-3-calculating-solar-angles/
-          //https://en.wikipedia.org/wiki/Position_of_the_Sun
-          //https://en.wikipedia.org/wiki/Horizontal_coordinate_system
-          //https://en.wikipedia.org/wiki/Solar_zenith_angle
-          //https://en.wikipedia.org/wiki/Solar_azimuth_angle
+          //Starting orientation is 180 degrees or Math.PI radians, e.g. south
+          root.rotation.y = (wallOrientation/180 * Math.PI) - Math.PI;
 
           var windowShadowMapRender = false;
           shadowGenerator.onAfterShadowMapRenderMeshObservable = new BABYLON.Observable();
