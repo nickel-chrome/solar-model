@@ -47,6 +47,88 @@
         // You can reference the following variables: scene, canvas
         // You must at least define a camera
 
+        var SolarUtil = function() {};
+
+        SolarUtil.dayOfYear = function(dtInput) {
+          var dtEnd = new Date(dtInput.getFullYear(), dtInput.getMonth(), dtInput.getDate());
+          var dtStart = new Date(dtEnd.getFullYear(), 0, 0);
+          var diff = (dtEnd - dtStart) + ((dtStart.getTimezoneOffset() - dtEnd.getTimezoneOffset()) * 60 * 1000);
+          var oneDay = 1000 * 60 * 60 * 24;
+          //algorithm returns base 0 value so add 1
+          var day = Math.floor(diff / oneDay) + 1;
+          console.log('Day of year: ' + day);
+          return day;
+        };
+
+        SolarUtil.declinationAngle = function(dtInput) {
+          var day = SolarUtil.dayOfYear(dtInput);
+          var angle = (23.45 * Math.PI/180) * Math.sin(2 * Math.PI * (284 + day)/365.25)
+          return angle;
+        };
+
+        SolarUtil.hourAngle = function(dtInput) {
+          var angle = (15 * ((dtInput.getHours() + dtInput.getMinutes()/60) - 12)) * Math.PI/180;
+          return angle;
+        };
+
+        var HorizontalCoordinate = function(azimuth, altitude) {
+          this.altitude = null;
+          this.azimuth = null;
+          this.sinAltitude = null;
+          this.cosAltitude = null;
+          this.sinAzimuth = null;
+          this.cosAzimuth = null;
+
+          if ( typeof azimth !== "undefined" && azimuth !== null && typeof altitude !== "undefined" && altitude !== null ) {
+            this.altitude = altitude;
+            this.azimuth = azimuth;
+            this.sinAltitude = Math.sin(this.altitude);
+            this.cosAltitude = Math.cos(this.altitude);
+            this.sinAzimuth = Math.sin(this.azimuth);
+            this.cosAzimuth = Math.cos(this.azimuth);
+          }
+        };
+
+        HorizontalCoordinate.fromLDH = function(latitude, declinationAngle, hourAngle) {
+
+          var coord = new HorizontalCoordinate();
+
+          coord.sinAltitude = (Math.sin(latitude) * Math.sin(declinationAngle)) + (Math.cos(latitude) * Math.cos(declinationAngle) * Math.cos(hourAngle));
+          coord.altitude = Math.asin(coord.sinAltitude);
+          coord.cosAltitude = Math.cos(coord.altitude);
+          //coord.sinAzimuth = -(Math.sin(hourAngle) * Math.cos(declinationAngle)) / Math.sqrt(1 - Math.pow(coord.sinAltitude, 2));
+          //coord.sinAzimuth = -(Math.sin(hourAngle) * Math.cos(declinationAngle)) / coord.cosAltitude;
+          coord.sinAzimuth = -(Math.sin(hourAngle) * Math.cos(declinationAngle)) / coord.cosAltitude;
+          coord.azimuth = Math.asin(coord.sinAzimuth);
+          coord.cosAzimuth = Math.cos(coord.azimuth);
+
+          console.log("altitude: " + coord.altitude + "(" + coord.altitude * 180/Math.PI + ")");
+          console.log("sinAltitude: " + coord.sinAltitude);
+          console.log("cosAltitude: " + coord.cosAltitude);
+          console.log("azimuth: " + coord.azimuth + "(" + coord.azimuth * 180/Math.PI + ")");
+          console.log("sinAzimuth: " + coord.sinAzimuth);
+          console.log("cosAzimuth: " + coord.cosAzimuth);
+          return coord;
+        };
+
+        HorizontalCoordinate.prototype.getAzimuth = function() {
+          return this.azimuth;
+        };
+
+        HorizontalCoordinate.prototype.getAltitude = function() {
+          return this.altitude;
+        };
+
+        HorizontalCoordinate.prototype.getVector = function() {
+          //var z = Math.sqrt(1 - Math.pow(this.sinAzimuth, 2)) * (-this.declinationAngle/Math.abs(this.declinationAngle))
+          var vector = {
+            x: this.sinAzimuth,
+            y: this.sinAltitude,
+            z: this.cosAzimuth * this.cosAltitude
+          };
+          return vector;
+        };
+
         var createScene = function() {
           var scene = new BABYLON.Scene(engine);
 
@@ -64,7 +146,7 @@
           //   and Hour Angle (H). This can then be transformed in to to X, Y and Z as follows:
           //
           //   L        = latitude
-          //   D        = 23.45 * sin((284 + julian day of year)/36.25)
+          //   D        = 23.45 * sin(360 * (284 + julian day of year)/365.25)
           //   H        = 15 * (time in hours - 12)
           //
           //   sin(Az)  = - (sin(H)cos(D)) / √(1 - sin(Alt)²)
@@ -88,11 +170,33 @@
           //https://en.wikipedia.org/wiki/Solar_zenith_angle
           //https://en.wikipedia.org/wiki/Solar_azimuth_angle
 
-
           //Orientation of wall in degrees from true north
-          var wallOrientation = 300;
+          var posOrientation = 300;
+          var posLatitude = -33.90;
+          var posDate = "2019-03-22 12:00";
+          var louvreAngleRoll = -Math.PI/5;
+          var louvreAngleYaw  = 0;
 
-          var root = new BABYLON.TransformNode();
+          var dtPositionDate = new Date(posDate);
+          var latitude = BABYLON.Angle.FromDegrees(posLatitude).radians();
+          var declinationAngle = SolarUtil.declinationAngle(dtPositionDate);
+          var hourAngle = SolarUtil.hourAngle(dtPositionDate);
+
+          var coordSolar = HorizontalCoordinate.fromLDH(latitude, declinationAngle, hourAngle);
+          var vectorSolar = coordSolar.getVector();
+
+          console.log("latitude: " + latitude);
+          console.log("declinationAngle: " + declinationAngle);
+          console.log("hourAngle: " + hourAngle);
+
+          console.log("azimuth: " + coordSolar.getAzimuth());
+          console.log("altitude: " + coordSolar.getAltitude());
+
+          console.log("x: " + vectorSolar.x);
+          console.log("y: " + vectorSolar.y);
+          console.log("z: " + vectorSolar.z);
+
+          var root = new BABYLON.TransformNode("facade");
 
           // camera
           //var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 1.5, Math.PI / 2.5, 25, new BABYLON.Vector3(2.5, -1.5, 7.5), scene);
@@ -105,17 +209,23 @@
           //var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-6, -3, 5), scene);
           //light.position = new BABYLON.Vector3(12, 6, -10);
 
-          var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(6, -3, 5), scene);
+          //var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(6, -3, 5), scene);
           //light.position = new BABYLON.Vector3(-12, 6, -10);
           //light.shadowMinZ = 1;
           //light.shadowMaxZ = 20;
 
-          light.position = new BABYLON.Vector3(-120, 60, -100);
-          light.shadowMinZ = 150;
-          light.shadowMaxZ = 200;
+          //var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(6, -3, 5), scene);
+          //light.position = new BABYLON.Vector3(-120, 60, -100);
+          //light.shadowMinZ = 150;
+          //light.shadowMaxZ = 200;
+
+          var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-vectorSolar.x, -vectorSolar.y, -vectorSolar.z), scene);
+          light.position = new BABYLON.Vector3(vectorSolar.x * 100, vectorSolar.y * 100, vectorSolar.z * 100);
+          light.shadowMinZ = 50;
+          light.shadowMaxZ = 150;
 
           //light.intensity = 10;
-          light.intensity = 3;
+          light.intensity = 6;
 
           //shadows
           var shadowGenerator = new BABYLON.ShadowGenerator(4096, light);
@@ -287,7 +397,8 @@
             for (var i = 0; i < louvreCount; i++) {
         		  var louvre = BABYLON.MeshBuilder.ExtrudePolygon(window.name + "_louvre", {shape:louvreShape, depth: louvreDepth}, scene);
         		  louvre.rotation.x = -Math.PI/2;
-        		  louvre.rotation.y = Math.PI/2;
+              //louvre.rotation.y = Math.PI/2;
+              louvre.rotation.y = louvreAngle;
 
               louvre.position.y = window.position.y - windowOffset;
               louvre.position.x = window.position.x - windowWidthOffset + (i * louvreSpacing);
@@ -302,13 +413,14 @@
             return louvreSetMesh;
           }
 
-          var louvreSetFTL = louvreSetMaker(windowFTL, 0.25, 0.075, 0.5, 0, 0.5);
+          //var louvreSetFTL = louvreSetMaker(windowFTL, 0.25, 0.075, 0.5, -Math.PI/2, 0.5);
+          var louvreSetFTL = louvreSetMaker(windowFTL, 0.4, 0.075, 0.5, louvreAngleRoll, 0.5);
         	shadowGenerator.addShadowCaster(louvreSetFTL);
 
           //var louvreSetFTR = louvreSetMaker(windowFTR, 0.25, 0.075, 0.5, 0);
         	//shadowGenerator.addShadowCaster(louvreSetFTR);
 
-          var louvreSetFBL = louvreSetMaker(windowFBL, 0.25, 0.075, 0.5, 0, 0.5);
+          var louvreSetFBL = louvreSetMaker(windowFBL, 0.25, 0.075, 0.5, louvreAngleRoll, 0.5);
           //louvreSetFBL.receiveShadows = true;
         	shadowGenerator.addShadowCaster(louvreSetFBL);
 
@@ -328,7 +440,7 @@
           */
 
           //Starting orientation is 180 degrees or Math.PI radians, e.g. south
-          root.rotation.y = (wallOrientation/180 * Math.PI) - Math.PI;
+          root.rotation.y = BABYLON.Angle.FromDegrees(posOrientation).radians() - Math.PI;
 
           var windowShadowMapRender = false;
           shadowGenerator.onAfterShadowMapRenderMeshObservable = new BABYLON.Observable();
