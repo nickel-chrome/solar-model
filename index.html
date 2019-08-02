@@ -102,12 +102,14 @@
           coord.azimuth = Math.asin(coord.sinAzimuth);
           coord.cosAzimuth = Math.cos(coord.azimuth);
 
+          /*
           console.log("altitude: " + coord.altitude + "(" + coord.altitude * 180/Math.PI + ")");
           console.log("sinAltitude: " + coord.sinAltitude);
           console.log("cosAltitude: " + coord.cosAltitude);
           console.log("azimuth: " + coord.azimuth + "(" + coord.azimuth * 180/Math.PI + ")");
           console.log("sinAzimuth: " + coord.sinAzimuth);
           console.log("cosAzimuth: " + coord.cosAzimuth);
+          */
           return coord;
         };
 
@@ -173,24 +175,29 @@
           //Orientation of wall in degrees from true north
           var posOrientation = 300;
           var posLatitude = -33.90;
-          var posDate = "2019-03-22 12:00";
+          var posDate = "2019-12-22 20:00";
           var louvreAngleRoll = -Math.PI/5;
           var louvreAngleYaw  = 0;
 
           var dtPositionDate = new Date(posDate);
-          var latitude = BABYLON.Angle.FromDegrees(posLatitude).radians();
+
+          console.log("GMT Date: " + dtPositionDate.toISOString());
+          var options = { hour12: false, timeZone: 'Australia/Sydney', timeZoneName: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+          console.log("Local Date: " + dtPositionDate.toLocaleDateString("en-AU", options));
+
+          var latitude = posLatitude * Math.PI/180;
           var declinationAngle = SolarUtil.declinationAngle(dtPositionDate);
           var hourAngle = SolarUtil.hourAngle(dtPositionDate);
 
           var coordSolar = HorizontalCoordinate.fromLDH(latitude, declinationAngle, hourAngle);
           var vectorSolar = coordSolar.getVector();
 
-          console.log("latitude: " + latitude);
-          console.log("declinationAngle: " + declinationAngle);
-          console.log("hourAngle: " + hourAngle);
+          console.log("latitude: " + latitude + " (" + latitude * 180/Math.PI + ")");
+          console.log("declinationAngle: " + declinationAngle + " (" + declinationAngle * 180/Math.PI + ")");
+          console.log("hourAngle: " + hourAngle + " (" + hourAngle * 180/Math.PI + ")");
 
-          console.log("azimuth: " + coordSolar.getAzimuth());
-          console.log("altitude: " + coordSolar.getAltitude());
+          console.log("azimuth: " + coordSolar.getAzimuth() + " (" + coordSolar.getAzimuth() * 180/Math.PI + ")");
+          console.log("altitude: " + coordSolar.getAltitude() + " (" + coordSolar.getAltitude() * 180/Math.PI + ")");
 
           console.log("x: " + vectorSolar.x);
           console.log("y: " + vectorSolar.y);
@@ -200,8 +207,12 @@
 
           // camera
           //var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 1.5, Math.PI / 2.5, 25, new BABYLON.Vector3(2.5, -1.5, 7.5), scene);
-          var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI*1.3, Math.PI*0.4, 25, new BABYLON.Vector3(0, 0, 0), scene);
-          camera.attachControl(canvas, true);
+          //var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI*1.3, Math.PI*0.4, 25, new BABYLON.Vector3(0, 0, 0), scene);
+          //camera.attachControl(canvas, true);
+
+          //var solarCamera = new BABYLON.ArcRotateCamera("SolarCamera", coordSolar.getAzimuth() - Math.PI/2, coordSolar.getAltitude(), 25, new BABYLON.Vector3(0, 0, 0), scene);
+          var solarCamera = new BABYLON.ArcRotateCamera("SolarCamera", Math.acos(Math.sin(coordSolar.getAzimuth())), Math.acos(Math.sin(coordSolar.getAltitude())), 25, new BABYLON.Vector3(0, 0, 0), scene);
+          solarCamera.attachControl(canvas, true);
 
           //var light = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-2, -3, 1), scene);
         	//light.position = new BABYLON.Vector3(10, 50, -10);
@@ -440,7 +451,7 @@
           */
 
           //Starting orientation is 180 degrees or Math.PI radians, e.g. south
-          root.rotation.y = BABYLON.Angle.FromDegrees(posOrientation).radians() - Math.PI;
+          root.rotation.y = (posOrientation * Math.PI/180) - Math.PI;
 
           var windowShadowMapRender = false;
           shadowGenerator.onAfterShadowMapRenderMeshObservable = new BABYLON.Observable();
